@@ -1,0 +1,38 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local application output
+logs/*.json
+training/artifacts/*.json
+!logs/.gitkeep
+!training/artifacts/.gitkeep
+
+# Training datasets (download locally only when retraining)
+training/data/
+!training/data/README.md
+
+# Unrelated local experiments and duplicate files
+ai_stock.py
+subjects.json
+subjects.json.txt
+phishing.csv
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+credentials.json
+token.json
+.secrets/
+.secrets/credentials.json
+.secrets/gmail_token.json
+*.pem
+*.key
+
+# Editor and OS files
+.vscode/
+.idea/
+desktop.ini
+Thumbs.db

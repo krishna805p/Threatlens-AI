@@ -1,0 +1,15 @@
+streamlit==1.57.0
+pandas==3.0.2
+numpy==2.4.2
+scikit-learn==1.8.0
+tldextract==5.3.1
+requests==2.33.1
+xgboost==3.2.0
+plotly==6.7.0
+streamlit-autorefresh==1.0.1
+fastapi==0.136.0
+uvicorn==0.52.4
+google-genai
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
