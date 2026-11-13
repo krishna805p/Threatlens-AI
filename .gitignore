@@ -10,7 +10,8 @@ training/artifacts/*.json
 !training/artifacts/.gitkeep
 logs/*.log
 *.log
-
+node_modules/
+frontend/node_modules/
 # Training datasets (download locally only when retraining)
 training/data/
 !training/data/README.md
