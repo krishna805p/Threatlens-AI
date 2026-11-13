@@ -1,0 +1,76 @@
+.electric-border {
+  --electric-border-color: #3b82f6;
+  --electric-light-color: #60a5fa;
+  position: relative;
+  isolation: isolate;
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.eb-layers {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.eb-glow-outer {
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--electric-border-color), var(--electric-light-color), #818cf8, var(--electric-border-color));
+  background-size: 200% 200%;
+  animation: ebGlowShift 4s ease infinite;
+  filter: blur(8px);
+  opacity: 0.85;
+}
+
+.eb-glow-border {
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  border: 2px solid var(--electric-light-color);
+  box-shadow:
+    0 0 12px var(--electric-border-color),
+    0 0 24px var(--electric-light-color),
+    inset 0 0 8px var(--electric-border-color);
+  opacity: 0.95;
+  animation: ebPulseGlow 3s ease-in-out infinite alternate;
+}
+
+.eb-content {
+  position: relative;
+  z-index: 1;
+  border-radius: calc(1rem - 1px);
+  background-color: #0b1528;
+  height: 100%;
+  width: 100%;
+}
+
+@keyframes ebGlowShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes ebPulseGlow {
+  0% {
+    box-shadow:
+      0 0 10px var(--electric-border-color),
+      0 0 20px var(--electric-light-color),
+      inset 0 0 6px var(--electric-border-color);
+  }
+  100% {
+    box-shadow:
+      0 0 18px var(--electric-border-color),
+      0 0 35px var(--electric-light-color),
+      inset 0 0 12px var(--electric-light-color);
+  }
+}

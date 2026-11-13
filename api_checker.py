@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import requests
 
-from feature_extraction import EXTENDED_TRUSTED_DOMAINS, load_trusted_domains
+from feature_extraction import EXTENDED_TRUSTED_DOMAINS, get_registered_domain, load_trusted_domains, normalize_url
 
 
 DEFAULT_WHITELIST = list(EXTENDED_TRUSTED_DOMAINS)
@@ -30,22 +30,35 @@ class URLReputationChecker:
         self.request_timeout = 5
 
     def check(self, url: str, registered_domain: str) -> Dict[str, object]:
-        registered_domain = registered_domain.lower()
-        live_whitelist = set(self.whitelist)
-        live_whitelist.update(domain.lower() for domain in load_trusted_domains())
-        if registered_domain in live_whitelist:
+        clean_domain = str(registered_domain or "").strip().rstrip(".").lower()
+        if "://" in clean_domain or "/" in clean_domain:
+            clean_domain = get_registered_domain(normalize_url(clean_domain))
+
+        live_whitelist = {domain.strip().rstrip(".").lower() for domain in self.whitelist}
+        live_whitelist.update(domain.strip().rstrip(".").lower() for domain in load_trusted_domains())
+
+        is_whitelisted = clean_domain in live_whitelist
+        matched_domain = clean_domain
+        if not is_whitelisted:
+            extracted_reg = get_registered_domain(f"http://{clean_domain}")
+            if extracted_reg and extracted_reg in live_whitelist:
+                if clean_domain == extracted_reg or clean_domain.endswith(f".{extracted_reg}"):
+                    is_whitelisted = True
+                    matched_domain = extracted_reg
+
+        if is_whitelisted:
             return {
                 "status": "safe_override",
                 "score_adjustment": -10,
-                "reasons": [f"Whitelisted trusted domain override applied for {registered_domain}."],
+                "reasons": [f"Whitelisted trusted domain override applied for {clean_domain}."],
                 "sources": ["whitelist"],
                 "api_result": None,
             }
-        if registered_domain in self.blacklist:
+        if clean_domain in self.blacklist:
             return {
                 "status": "malicious_override",
                 "score_adjustment": 6,
-                "reasons": [f"Domain matched internal blacklist: {registered_domain}."],
+                "reasons": [f"Domain matched internal blacklist: {clean_domain}."],
                 "sources": ["blacklist"],
                 "api_result": None,
             }

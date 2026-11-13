@@ -8,10 +8,13 @@ logs/*.json
 training/artifacts/*.json
 !logs/.gitkeep
 !training/artifacts/.gitkeep
+logs/*.log
+*.log
 
 # Training datasets (download locally only when retraining)
 training/data/
 !training/data/README.md
+training/gmail_classifier/
 
 # Unrelated local experiments and duplicate files
 ai_stock.py

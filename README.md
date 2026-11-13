@@ -10,7 +10,7 @@ It combines machine learning and rule-based risk signals to classify each input 
 
 ## Features
 
-- Multi-source detection dashboard built with Streamlit
+- Multi-page SOC Threat Intelligence Dashboard built with React.js, Vite, and Tailwind CSS
 - Email classifier trained on phishing and ham email datasets
 - SMS classifier trained on bundled sample SMS fraud data
 - URL classifier trained on engineered URL structure features
@@ -19,8 +19,8 @@ It combines machine learning and rule-based risk signals to classify each input 
 
 ## Project Layout
 
-- `app.py`, `main.py`, and `dashboard.py` — Streamlit dashboard entry points and UI.
-- `backend_api.py` — FastAPI API service entry point.
+- `frontend/` — React.js + Vite SOC dashboard Single Page Application.
+- `backend_api.py` / `main.py` — FastAPI API service entry point (`http://127.0.0.1:8000`).
 - Root prediction modules — retained at the top level because the saved `detector.pkl` references their module names while loading.
 - `models/detector.pkl` — trained runtime model.
 - `config/trusted_domains.csv` — editable trusted-domain configuration.
@@ -28,7 +28,7 @@ It combines machine learning and rule-based risk signals to classify each input 
 - `chrome_extension/` — browser extension.
 - `protection_agent/` — Windows clipboard-monitoring agent.
 - `training/` — optional retraining script, source datasets, and generated training artifacts; datasets and artifacts are ignored by Git.
-- `tests/` - manual URL smoke test.
+- `tests/` - unit and pipeline tests.
 
 ## Platform Architecture
 
@@ -40,33 +40,25 @@ Raw datasets are intentionally excluded from Git so the repository stays small a
 
 ## How To Run
 
-1. Install dependencies:
+1. Install Python backend dependencies:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-2. Optional: train the models locally after placing the source data in `training/data/`:
+2. Start the FastAPI backend server (`http://127.0.0.1:8000`):
 
 ```powershell
-python training/train.py
+python main.py
 ```
 
-3. Start the application:
+3. Install React frontend dependencies and start the Vite dev server (`http://localhost:5173`):
 
 ```powershell
-streamlit run app.py
+cd frontend
+npm install
+npm run dev
 ```
-
-## Streamlit Community Cloud
-
-Deploy `app.py` (or `dashboard.py`) as the entry point. The web dashboard uses the root `requirements.txt`; the Windows background agent uses the separate `requirements-agent.txt` locally.
-
-To run the optional FastAPI backend locally, install `requirements-backend.txt` in addition to the dependencies you use for that service.
-
-In Streamlit Community Cloud, select Python **3.13** in **Advanced settings** before deploying. This matches the Python 3.13.12 environment used to train the included `detector.pkl` model.
-
-Optional Google Safe Browsing, VirusTotal, and Gemini AI Security Assistant integrations use the environment variables listed in `.env.example`. Add real values through Streamlit Community Cloud's Secrets settings, never to Git. For the optional assistant, set `GEMINI_API_KEY` and leave `GEMINI_MODEL` as `gemini-2.5-flash` unless you intentionally choose another supported Gemini API model.
 
 ## Optional Gmail Security (local development)
 

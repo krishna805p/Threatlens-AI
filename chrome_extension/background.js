@@ -1,5 +1,7 @@
-const API_ENDPOINT = "http://localhost:5000/predict";
-const FEEDBACK_ENDPOINT = "http://localhost:5000/feedback/false-positive";
+const TELEMETRY_ENDPOINT = "http://127.0.0.1:8000/api/v1/live/telemetry";
+const API_ENDPOINT = "http://127.0.0.1:8000/predict";
+const FEEDBACK_ENDPOINT = "http://127.0.0.1:8000/feedback/false-positive";
+const HEALTH_ENDPOINT = "http://127.0.0.1:8000/health";
 const ANALYSIS_TIMEOUT_MS = 6000;
 const HISTORY_LIMIT = 10;
 const SUPPORTED_PROTOCOLS = ["http:", "https:"];
@@ -69,15 +71,17 @@ function buildBackendErrorResult(url, message) {
 }
 
 function buildApiResult(url, payload) {
+  const rawData = payload.telemetry || payload;
   return {
     url,
     status: "ok",
-    risk_level: payload.risk_level || "Safe",
-    risk_score: Number(payload.risk_score ?? 0),
-    ml_probability: Number(payload.ml_probability ?? 0),
-    reason: normalizeReasons(payload.reason),
-    prediction: payload.prediction || "Safe",
-    debug: payload.debug || {},
+    risk_level: rawData.risk_level || "Safe",
+    risk_score: Number(rawData.risk_score ?? 0),
+    ml_probability: Number(rawData.ml_probability ?? rawData.probability ?? 0),
+    reason: normalizeReasons(rawData.reasons || rawData.reason),
+    prediction: rawData.prediction || "Safe",
+    source: rawData.source || "CHROME EXTENSION",
+    debug: rawData.debug || {},
     updatedAt: Date.now()
   };
 }
@@ -99,9 +103,13 @@ async function updateBadge(tabId, result) {
     return;
   }
 
-  const style = BADGE_STYLE[result.risk_level] || BADGE_STYLE.Unavailable;
-  await chrome.action.setBadgeBackgroundColor({ tabId, color: style.color });
-  await chrome.action.setBadgeText({ tabId, text: style.text });
+  try {
+    const style = BADGE_STYLE[result.risk_level] || BADGE_STYLE.Unavailable;
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: style.color });
+    await chrome.action.setBadgeText({ tabId, text: style.text });
+  } catch (error) {
+    // Ignore stale tab errors (e.g. tab closed before badge update)
+  }
 }
 
 async function sendBannerState(tabId, result) {
@@ -119,25 +127,50 @@ async function sendBannerState(tabId, result) {
   }
 }
 
+async function checkBackendHealth() {
+  try {
+    const response = await withTimeout(HEALTH_ENDPOINT, { method: "GET" });
+    if (!response.ok) {
+      return false;
+    }
+    const payload = await response.json();
+    return payload?.status === "ok";
+  } catch (error) {
+    return false;
+  }
+}
+
 async function analyzeUrl(url) {
   if (!url || !isSupportedUrl(url)) {
     return buildInvalidUrlResult(url);
   }
 
+  const isHealthy = await checkBackendHealth();
+  if (!isHealthy) {
+    return buildBackendErrorResult(url, "Backend not reachable.");
+  }
+
   try {
-    const response = await withTimeout(API_ENDPOINT, {
+    const response = await withTimeout(TELEMETRY_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, source: "chrome_extension" })
     });
 
     if (!response.ok) {
-      const message = response.status === 429
-        ? "Backend rate limit reached."
-        : `Backend returned ${response.status}.`;
-      return buildBackendErrorResult(url, message);
+      // Fallback to /predict if /api/v1/live/telemetry returns error status
+      const fallbackResp = await withTimeout(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      if (!fallbackResp.ok) {
+        return buildBackendErrorResult(url, `Backend returned ${fallbackResp.status}.`);
+      }
+      const fallbackPayload = await fallbackResp.json();
+      return buildApiResult(url, fallbackPayload);
     }
 
     const payload = await response.json();
@@ -183,25 +216,37 @@ async function reportFalsePositive(url) {
 }
 
 async function updateTabAnalysis(tabId, url) {
-  const result = await analyzeUrl(url);
-  const storageKey = `analysis_${tabId}`;
-  await chrome.storage.local.set({ [storageKey]: result });
-  await storeHistory(result);
-  await updateBadge(tabId, result);
-  await sendBannerState(tabId, result);
+  try {
+    const result = await analyzeUrl(url);
+    const storageKey = `analysis_${tabId}`;
+    await chrome.storage.local.set({ [storageKey]: result });
+    await storeHistory(result);
+    await updateBadge(tabId, result);
+    await sendBannerState(tabId, result);
+  } catch (error) {
+    // Ignore stale tab errors (e.g. tab closed during analysis)
+  }
 }
 
 async function analyzeActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || typeof tab.id !== "number") {
-    return;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || typeof tab.id !== "number") {
+      return;
+    }
+    await updateTabAnalysis(tab.id, tab.url || "");
+  } catch (error) {
+    // Ignore stale active tab errors
   }
-  await updateTabAnalysis(tab.id, tab.url || "");
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
-  await chrome.storage.local.set({ scanHistory: [] });
-  await analyzeActiveTab();
+  try {
+    await chrome.storage.local.set({ scanHistory: [] });
+    await analyzeActiveTab();
+  } catch (error) {
+    // Ignore installation tab errors
+  }
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
@@ -215,11 +260,31 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" || changeInfo.url) {
-    await updateTabAnalysis(tabId, tab.url || changeInfo.url || "");
+    try {
+      await updateTabAnalysis(tabId, tab.url || changeInfo.url || "");
+    } catch (error) {
+      // Ignore stale tab errors
+    }
   }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "COPIED_URL_DETECTED") {
+    const copiedUrl = message.url;
+    const tabId = sender?.tab?.id;
+    analyzeUrl(copiedUrl).then(async (result) => {
+      await storeHistory(result);
+      if (typeof tabId === "number") {
+        await updateBadge(tabId, result);
+        await sendBannerState(tabId, result);
+      }
+      sendResponse({ status: "ok", result });
+    }).catch((error) => {
+      sendResponse({ error: error?.message || "Analysis failed." });
+    });
+    return true;
+  }
+
   if (message?.type === "GET_ACTIVE_ANALYSIS") {
     chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
       if (!tab || typeof tab.id !== "number") {
@@ -242,6 +307,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         analysis,
         scanHistory: storage.scanHistory
       });
+    }).catch((error) => {
+      sendResponse({ error: error?.message || "Active tab unavailable." });
     });
     return true;
   }
@@ -259,6 +326,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await updateBadge(tab.id, analysis);
       await sendBannerState(tab.id, analysis);
       sendResponse({ analysis });
+    }).catch((error) => {
+      sendResponse({ error: error?.message || "Active tab unavailable." });
     });
     return true;
   }
@@ -283,9 +352,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await sendBannerState(tab.id, analysis);
 
       sendResponse({ analysis, feedback });
+    }).catch((error) => {
+      sendResponse({ error: error?.message || "Active tab unavailable." });
     });
     return true;
   }
 
   return false;
 });
+

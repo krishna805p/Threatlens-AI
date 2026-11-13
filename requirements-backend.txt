@@ -1,3 +1,2 @@
-# The FastAPI service uses the shared production dependencies in requirements.txt.
-# The Streamlit dashboard does not import or start this service on Community Cloud.
+# Production FastAPI backend dependencies.
 -r requirements.txt

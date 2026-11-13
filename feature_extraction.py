@@ -50,7 +50,7 @@ def load_trusted_domains() -> List[str]:
         return []
 
     for raw_line in raw_lines:
-        value = raw_line.strip().lower()
+        value = raw_line.strip().rstrip(".").lower()
         if not value or value.startswith("#") or value == "domain":
             continue
         trusted_domains.append(value)
@@ -66,7 +66,7 @@ def append_trusted_domain(url_or_domain: str) -> str:
     if "://" in candidate or "/" in candidate:
         candidate = get_registered_domain(normalize_url(candidate))
 
-    candidate = candidate.strip().lower()
+    candidate = candidate.strip().rstrip(".").lower()
     if not candidate:
         raise ValueError("Could not extract a valid registered domain.")
 
@@ -101,6 +101,8 @@ EXTENDED_TRUSTED_DOMAINS = sorted(set(TRUSTED_DOMAINS + [
     "codechef.com",
     "docs.google.com",
     "drive.google.com",
+    "grammarly.com",
+    "blitz.cloud",
 ] + load_trusted_domains()))
 
 COMMON_SAFE_TLDS = {"com", "org", "edu", "gov", "net", "co", "in"}
@@ -217,10 +219,23 @@ class URLFeatureExtractor:
     trusted_domains: List[str] = field(default_factory=lambda: list(EXTENDED_TRUSTED_DOMAINS))
 
     def is_trusted_domain(self, registered_domain: str) -> bool:
-        merged_trusted_domains = {domain.lower() for domain in EXTENDED_TRUSTED_DOMAINS}
-        merged_trusted_domains.update(load_trusted_domains())
-        merged_trusted_domains.update(domain.lower() for domain in self.trusted_domains)
-        return registered_domain in merged_trusted_domains
+        clean_domain = str(registered_domain or "").strip().rstrip(".").lower()
+        if "://" in clean_domain or "/" in clean_domain:
+            clean_domain = get_registered_domain(normalize_url(clean_domain))
+
+        merged_trusted_domains = {domain.strip().rstrip(".").lower() for domain in EXTENDED_TRUSTED_DOMAINS}
+        merged_trusted_domains.update(domain.strip().rstrip(".").lower() for domain in load_trusted_domains())
+        merged_trusted_domains.update(domain.strip().rstrip(".").lower() for domain in self.trusted_domains)
+
+        if clean_domain in merged_trusted_domains:
+            return True
+
+        extracted_reg = get_registered_domain(f"http://{clean_domain}")
+        if extracted_reg and extracted_reg in merged_trusted_domains:
+            if clean_domain == extracted_reg or clean_domain.endswith(f".{extracted_reg}"):
+                return True
+
+        return False
 
     def mock_domain_age_days(self, registered_domain: str, suspicious_keyword_count: int) -> int:
         if self.is_trusted_domain(registered_domain):

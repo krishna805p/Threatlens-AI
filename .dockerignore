@@ -1,0 +1,75 @@
+# Virtual environments
+.venv/
+venv/
+env/
+training/gmail_classifier/venv_threatlens_train/
+
+# Git and IDE metadata
+.git/
+.gitignore
+.github/
+.gemini/
+.vscode/
+.idea/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local secrets, environment variables, credentials
+.env
+.env.*
+!.env.example
+.secrets/*.json
+
+# Logs and local telemetry
+logs/*.json
+logs/*.log
+*.log
+
+# Frontend (deployed separately on Vercel)
+frontend/
+
+# Local Windows desktop agent and Chrome extension
+chrome_extension/
+protection_agent/
+requirements-agent.txt
+
+# Tests and verification scripts
+tests/
+training/**/phase_2_*_verify.py
+training/**/verify_*.py
+training/**/test_*.py
+
+# Scratch and documentation
+docs/
+scratch/
+*.md
+!README.md
+
+# Training datasets and raw data
+training/data/
+training/artifacts/
+training/gmail_classifier/data/
+training/gmail_classifier/raw_data/
+training/gmail_classifier/raw_data_expanded/
+training/gmail_classifier/commercially_eligible_dataset/
+training/gmail_classifier/commercial_readiness/
+training/gmail_classifier/phase_2_6_5_*
+training/gmail_classifier/training/
+
+# Training intermediate & duplicate checkpoints (best_checkpoint is explicitly copied)
+training/gmail_classifier/outputs/smoke_test/
+training/gmail_classifier/outputs/phase_2/
+training/gmail_classifier/outputs/phase_2_5/
+training/gmail_classifier/outputs/phase_2_7_commercial/final_checkpoint/
+training/gmail_classifier/outputs/phase_2_7_commercial/resume_checkpoints/
+training/gmail_classifier/outputs/phase_2_7_commercial/*.csv
+training/gmail_classifier/outputs/phase_2_7_commercial/*.log
+training/gmail_classifier/outputs/phase_2_7_commercial/*.json
+!training/gmail_classifier/outputs/phase_2_7_commercial/best_checkpoint/

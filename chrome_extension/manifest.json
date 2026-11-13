@@ -4,7 +4,12 @@
   "version": "1.0.0",
   "description": "Real-time browser security extension powered by the AI-based cybercrime detection backend.",
   "permissions": ["tabs", "storage", "activeTab"],
-  "host_permissions": ["http://localhost:5000/*"],
+  "host_permissions": [
+    "http://localhost:5000/*",
+    "http://127.0.0.1:5000/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"

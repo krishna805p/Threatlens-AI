@@ -61,3 +61,33 @@ chrome.runtime.onMessage.addListener((message) => {
     updateBanner(message.payload);
   }
 });
+
+const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/i;
+
+function extractUrlFromText(text) {
+  if (!text || typeof text !== "string") return null;
+  const match = text.match(URL_REGEX);
+  if (!match) return null;
+  let url = match[1].trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "http://" + url;
+  }
+  return url;
+}
+
+document.addEventListener("copy", () => {
+  try {
+    const selection = window.getSelection()?.toString() || "";
+    const extractedUrl = extractUrlFromText(selection);
+    if (extractedUrl) {
+      chrome.runtime.sendMessage({
+        type: "COPIED_URL_DETECTED",
+        url: extractedUrl
+      }).catch(() => {
+        // Ignore extension context invalidated errors
+      });
+    }
+  } catch (error) {
+    // Ignore DOM copy event errors
+  }
+});

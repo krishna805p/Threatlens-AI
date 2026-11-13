@@ -3,7 +3,16 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except Exception:
+    pass
+
 
 
 DEFAULT_MODEL = "gemini-2.5-flash"
@@ -21,7 +30,7 @@ def generate_security_explanation(
     """Answer a user-requested question using only one detection's context."""
     key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
-        return "AI Security Assistant is currently unavailable. Add `GEMINI_API_KEY` to Streamlit secrets or the environment. The local detection result is still valid."
+        return "AI Security Assistant is currently unavailable. Add `GEMINI_API_KEY` to your environment variables or .env file. The local detection result is still valid."
 
     try:
         from google import genai
@@ -33,7 +42,8 @@ def generate_security_explanation(
             f"Recent conversation: {conversation}\n\nUser question: {question.strip()}\n\n"
             "Use short sections when helpful: Threat Summary, Why It Was Flagged, What It Means, Recommended Action."
         )
-        response = genai.Client(api_key=key).models.generate_content(
+        client = genai.Client(api_key=key)
+        response = client.models.generate_content(
             model=model or os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
             contents=prompt,
             config=types.GenerateContentConfig(
